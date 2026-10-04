@@ -1,0 +1,83 @@
+# The framework wrapper, and nothing else.
+#
+# `Package.swift` beside this file is the real project: sources, tests, and what
+# anyone developing this package builds. This file exists for one reason —
+# SwiftPM cannot produce a `.framework`, and an `.xcframework` is what the
+# application consumes. So the same sources are compiled once more, here, as a
+# framework target, and `Scripts/build-xcframework.sh` wraps the result.
+#
+# Dynamic, like the frameworks beside it in a consumer, and for the same reason:
+# one copy shared through `Contents/Frameworks` is what keeps a type from
+# existing twice in a process. That matters more here than for a parser. Two
+# copies of `LogSink` would mean a sink installed through one of them never
+# receives the lines written through the other — silently, at run time, with
+# nothing in a build to say so.
+#
+# No dependencies, and so no `ThirdParty/` and no linked frameworks: this package
+# stands on `Foundation`, `Synchronization`, `OSLog` and `CryptoKit`, all of them
+# the platform's — and all four exist on iOS, which is why the same sources carry
+# to the phone without a single conditional.
+#
+# Generated project, not committed: run the script.
+name: RedactLog
+
+options:
+  bundleIdPrefix: io.altessa
+  deploymentTarget:
+    macOS: "15.0"
+    iOS: "18.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    # What makes the module readable by a later compiler than the one that
+    # built it: the `.swiftinterface` beside the binary module. Without it the
+    # framework would have to be rebuilt for every Xcode the consumers use.
+    BUILD_LIBRARY_FOR_DISTRIBUTION: "YES"
+    SWIFT_STRICT_CONCURRENCY: complete
+    CLANG_ENABLE_MODULE_DEBUGGING: "NO"
+
+targets:
+  RedactLog:
+    type: framework
+    # One target, three slices — not three targets. `supportedDestinations`
+    # keeps the scheme, the product name and the module name single; a target
+    # split per platform would give XcodeGen leave to suffix all three, and the
+    # script below archives by scheme name.
+    supportedDestinations: [macOS, iOS]
+    sources:
+      - path: Sources/RedactLog
+    settings:
+      base:
+        PRODUCT_NAME: RedactLog
+        PRODUCT_MODULE_NAME: RedactLog
+        # No bundle, no resources, nothing to load at runtime: the framework
+        # is a wrapper around a static archive and its module.
+        DEFINES_MODULE: "YES"
+        SKIP_INSTALL: "NO"
+        DYLIB_INSTALL_NAME_BASE: "@rpath"
+        # A framework without an `Info.plist` cannot be embedded in an
+        # application bundle: Xcode's copy phase refuses it by name. Synthesised
+        # rather than kept as a file, because there is nothing in it this
+        # package has an opinion about.
+        GENERATE_INFOPLIST_FILE: "YES"
+        PRODUCT_BUNDLE_IDENTIFIER: io.altessa.redactlog
+        # What a local build calls itself, and it is not a version: 0.0.0 says
+        # "not a release". A release overrides it with the tag, through
+        # `Scripts/build-xcframework.sh`. It said 1.0.0 once, and a local framework
+        # then outranked every release that had actually shipped.
+        MARKETING_VERSION: "0.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        # Where the archive puts the built framework, and the script reads it
+        # back from exactly here. macOS is the only platform this path is
+        # idiomatic for; iOS ignores the convention and is content to be
+        # archived to the same place, which is what keeps one lookup in the
+        # script instead of a branch per platform.
+        INSTALL_PATH: /Library/Frameworks
+        # Every slice the destination has, always: the consumer's release build
+        # is universal, and a framework missing one fails the link rather than
+        # the build. On macOS and the simulator that is two, on an iOS device
+        # one — the script knows which to expect where.
+        ARCHS: "$(ARCHS_STANDARD)"
+        ONLY_ACTIVE_ARCH: "NO"
