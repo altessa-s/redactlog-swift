@@ -74,8 +74,8 @@ jobs:
       # in a release that means after it has been linked.
       - name: Build the xcframework
         env:
-          RMLOG_VERSION: ${{ steps.version.outputs.version }}
-          RMLOG_BUILD: ${{ github.run_number }}
+          REDACTLOG_VERSION: ${{ steps.version.outputs.version }}
+          REDACTLOG_BUILD: ${{ github.run_number }}
         run: Scripts/build-xcframework.sh
 
       # `ditto` and not `zip`: an `.xcframework` is a bundle, and `ditto`
@@ -84,11 +84,11 @@ jobs:
       - name: Package and checksum
         id: package
         run: |
-          ditto -c -k --keepParent build/RMLog.xcframework RMLog.xcframework.zip
-          checksum="$(swift package compute-checksum RMLog.xcframework.zip)"
+          ditto -c -k --keepParent build/RedactLog.xcframework RedactLog.xcframework.zip
+          checksum="$(swift package compute-checksum RedactLog.xcframework.zip)"
           echo "checksum=$checksum" >> "$GITHUB_OUTPUT"
           echo "sha256 $checksum"
-          ls -lh RMLog.xcframework.zip
+          ls -lh RedactLog.xcframework.zip
 
       - name: Write the notes
         env:
@@ -99,7 +99,7 @@ jobs:
           SERVER: ${{ github.server_url }}
         run: |
           {
-            echo "## RMLog $VERSION"
+            echo "## RedactLog $VERSION"
             echo
             echo "Process logs with masking built into the message: a facade a host"
             echo "installs once, channels the code writes to, and sinks for the unified"
@@ -114,7 +114,7 @@ jobs:
             echo "targets: ["
             echo "    .target("
             echo "        name: \"YourTarget\","
-            echo "        dependencies: [.product(name: \"RMLog\", package: \"rmlog-swift\")]"
+            echo "        dependencies: [.product(name: \"RedactLog\", package: \"redactlog-swift\")]"
             echo "    ),"
             echo "]"
             echo '```'
@@ -123,13 +123,14 @@ jobs:
             echo
             echo "### As a binary"
             echo
-            echo "The attached \`RMLog.xcframework.zip\` is a **dynamic** framework of both"
-            echo "macOS slices (arm64 and x86_64), checked as such before it was uploaded."
+            echo "The attached \`RedactLog.xcframework.zip\` is a **dynamic** framework for macOS"
+            echo "(arm64, x86_64), iOS (arm64) and the iOS simulator (arm64, x86_64), each"
+            echo "slice checked before it was uploaded."
             echo
             echo '```swift'
             echo ".binaryTarget("
-            echo "    name: \"RMLog\","
-            echo "    url: \"$SERVER/$REPO/releases/download/$TAG/RMLog.xcframework.zip\","
+            echo "    name: \"RedactLog\","
+            echo "    url: \"$SERVER/$REPO/releases/download/$TAG/RedactLog.xcframework.zip\","
             echo "    checksum: \"$CHECKSUM\""
             echo ")"
             echo '```'
@@ -155,7 +156,7 @@ jobs:
           flags=()
           [ "$PRERELEASE" = "true" ] && flags+=(--prerelease)
           gh release create "$TAG" \
-            RMLog.xcframework.zip \
-            --title "RMLog $VERSION" \
+            RedactLog.xcframework.zip \
+            --title "RedactLog $VERSION" \
             --notes-file notes.md \
             "${flags[@]+"${flags[@]}"}"
