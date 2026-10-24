@@ -110,7 +110,7 @@ As a source dependency:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/altessa-s/redactlog-swift.git", from: "0.10.0"),
+    .package(url: "https://github.com/altessa-s/redactlog-swift.git", from: "0.10.1"),
 ],
 ```
 
