@@ -2,6 +2,8 @@
 // Use of this source code is governed by an MIT-style license that can be
 // found in the LICENSE file.
 
+// os.Logger is Apple's system log; that system does not exist on Linux or Windows.
+#if canImport(OSLog)
 import Foundation
 import OSLog
 import Synchronization
@@ -80,3 +82,4 @@ public final class OSLogSink: LogSink {
         }
     }
 }
+#endif
