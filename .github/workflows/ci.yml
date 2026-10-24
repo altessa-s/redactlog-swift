@@ -70,6 +70,20 @@ jobs:
           chown -R builder "$(cd .. && pwd)"
           su builder -c "cd '$GITHUB_WORKSPACE' && swift build && swift test"
 
+  # Windows has no image to pull, and the generic installer resolved no
+  # version; this one installs the release build from swift.org by name.
+  windows:
+    name: Build and test on Windows
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v7
+      - uses: compnerd/gha-setup-swift@main
+        with:
+          branch: swift-6.3.3-release
+          tag: 6.3.3-RELEASE
+      - run: swift build
+      - run: swift test --no-parallel
+
   lint:
     name: SwiftLint
     runs-on: macos-latest
