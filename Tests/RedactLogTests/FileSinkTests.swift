@@ -11,26 +11,6 @@ import Testing
 // temporary file: what is being checked is the file this writes, and a fake
 // file system would be checking the fake.
 
-/// A directory of its own per case, removed after it.
-private func temporaryDirectory() throws -> URL {
-    let url = FileManager.default.temporaryDirectory
-        .appending(path: "redactlog-filesink-\(UUID().uuidString)")
-    try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-    return url
-}
-
-/// What the file holds, line by line.
-///
-/// Read only after `flush()`: the sink hands its lines to a stream and
-/// returns, and the barrier is the one wait that says nothing about the
-/// clock. A deadline would measure the machine, not the sink — under a full
-/// run the writer and the test itself both wait for a pool thread, and how
-/// long is the other tests' business.
-private func contents(of file: URL) -> [String] {
-    ((try? String(contentsOf: file, encoding: .utf8)) ?? "")
-        .split(separator: "\n").map(String.init)
-}
-
 @Test("Lines land in the file, in the order they were written")
 func linesKeepTheirOrder() async throws {
     let directory = try temporaryDirectory()
@@ -282,6 +262,8 @@ func flushSurvivesAStorm() async throws {
     #expect(text.contains("line 1000"))
 }
 
+// Windows cannot express "the disk refused" through Foundation.
+#if !os(Windows)
 @Test("Lines the disk refused are counted, and said once the disk takes lines again")
 func writeFailuresAreReported() async throws {
     let directory = try temporaryDirectory()
@@ -397,3 +379,4 @@ func theThresholdIsTheSinksOwn() async throws {
     #expect(lines.count == 1)
     #expect(lines[0].hasSuffix("kept"))
 }
+#endif

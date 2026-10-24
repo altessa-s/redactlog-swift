@@ -110,11 +110,13 @@ As a source dependency:
 
 ```swift
 dependencies: [
-    .package(url: "…/redactlog-swift.git", from: "1.0.0"),
+    .package(url: "https://github.com/altessa-s/redactlog-swift.git", from: "0.10.1"),
 ],
 ```
 
-Or as the `RedactLog.xcframework` a release attaches — dynamic and universal. Building it and cutting a release are below.
+Or as the `RedactLog.xcframework` a release attaches — dynamic and universal, and Apple
+platforms only: an `.xcframework` is an Apple bundle, so a Linux or Windows host takes the
+source dependency above. Building it and cutting a release are below.
 **One copy per process**, whichever way it comes in: two copies of `LogSink` in one process means a sink installed through one
 of them never receives the lines written through the other — silently, at run time, with nothing in a build to say so. A host
 that embeds this framework once and links it from everywhere else is a host where that cannot happen.
@@ -136,7 +138,11 @@ it.
 
 ## Releasing
 
-Push a tag. `1.2.0` and `v1.2.0` both work, and a hyphen makes it a pre-release (`1.2.0-beta.2`).
+Releases follow gitflow: work lands in `develop`, a `release/x.y.z` branch is cut from it and merged
+into `main` with `--no-ff`, and the tag goes on `main` — a tag on `develop` names a commit that
+is not the release.
+
+Push the tag. `1.2.0` and `v1.2.0` both work, and a hyphen makes it a pre-release (`1.2.0-beta.2`).
 
 ```sh
 git tag 1.2.0 && git push origin 1.2.0
@@ -149,7 +155,7 @@ it with the lines a consumer pastes:
 ```swift
 .binaryTarget(
     name: "RedactLog",
-    url: "…/releases/download/1.2.0/RedactLog.xcframework.zip",
+    url: "https://github.com/altessa-s/redactlog-swift/releases/download/v1.2.0/RedactLog.xcframework.zip",
     checksum: "…"
 )
 ```
@@ -172,7 +178,11 @@ REDACTLOG_VERSION=1.2.0 Scripts/build-xcframework.sh
 swift test
 ```
 
-42 of them, and what they are mostly about is what must *not* happen: that a token never reached a line, that a value nobody
+CI runs them on macOS and, in the `swift:6.3` image, on Linux. Windows has no
+image to pull and the toolchain installer resolved no version, so it is checked
+by hand in a Windows VM.
+
+What they are mostly about is what must *not* happen: that a token never reached a line, that a value nobody
 classified came out redacted, that a rotation put a file aside instead of losing it, that a level nobody listens to costs
 nothing, that a flush under a storm comes back. Each one gives the facade a recording sink and asks what it received.
 
