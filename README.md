@@ -3,7 +3,8 @@
 Process logs with masking built into the message: a facade a host installs once, channels the code writes to, lines whose every
 interpolated value carries what may be done with it, and sinks for the unified log, a rotating file and a terminal.
 
-A standalone package: twenty files that name `Foundation`, `Synchronization`, `OSLog` and `CryptoKit` and nothing else.
+A Swift package for Apple platforms, Linux and Windows, using `Foundation` and `Synchronization`.
+Apple builds use `OSLog` and `CryptoKit`; Linux and Windows use `Crypto` from `apple/swift-crypto`.
 
 ## Why it exists
 
@@ -15,15 +16,17 @@ So the logging lives outside any domain, and what makes that work is that **noth
 
 ## What it depends on
 
-Nothing. `Foundation`, `Synchronization`, `OSLog` and `CryptoKit` are the platform's.
+`apple/swift-crypto` supplies hashing on Linux and Windows. Apple builds prefer the system `CryptoKit` module.
+`OSLogSink` is available only where `OSLog` can be imported: `os.Logger` is Apple's system log,
+and that system does not exist on Linux or Windows. Use `FileSink`, `ConsoleSink` and `CollapsingSink` there.
 
-That is not a boast, it is the constraint the package is shaped by, and it cost three seams. Each one is a thing a logger would
-like to know and has no business knowing.
+The host supplies three things that the package cannot choose for it:
 
 - **The categories come from outside.** `LogCategory` is a label — a string in a wrapper, with no cases. What the parts of a
   process are is a fact about that process, so a host declares its own, and a package that logs declares its own channel. The
   one category here is `redactlog`, for the one or two things this package has to say about itself.
-- **The subsystem comes from outside.** `OSLogSink(subsystem:)` has no default: that string is the host's identity — the one
+- **On Apple platforms, the subsystem comes from outside.** `OSLogSink(subsystem:)` has no default:
+  that string is the host's identity — the one
   `log stream --predicate 'subsystem == "…"'` names — and a logger that invents one sends a process's lines somewhere nobody is
   looking.
 - **The file name comes from outside.** `FileSink(directory:name:)` likewise.
@@ -72,7 +75,7 @@ log is read for and the runs it is least readable in.
 | `LogMessage`, `LogValue` | The line and its fields. Tags: `.public`, `.secret`, `.userText`, `.redacted` (the default). |
 | `LogCategory`, `LogLevel`, `LogEntry` | A label, a scale mirroring `OSLogType`, and what a sink receives. |
 | `SecretMasking`, `DigestMasker` | The one place a secret is turned into something printable. |
-| `OSLogSink`, `FileSink`, `ConsoleSink`, `CollapsingSink` | Where lines go. The file sink rotates, by count or by timestamp. |
+| `OSLogSink`, `FileSink`, `ConsoleSink`, `CollapsingSink` | Where lines go. `OSLogSink` is Apple-only. The file sink rotates, by count or by timestamp. |
 | `MessageFormat`, `PlainTextFormat`, `JSONLinesFormat` | What a line looks like once it gets there. |
 
 ## Using it
@@ -89,10 +92,13 @@ extension Log {
 }
 
 // Once, at the start of the process, from its composition root.
-Log.bootstrap(sinks: [
-    OSLogSink(subsystem: "com.example.app"),
-    CollapsingSink(FileSink(directory: logDirectory, name: "app.log")),
-])
+var sinks: [any LogSink] = []
+#if canImport(OSLog)
+// Apple's system log does not exist on Linux or Windows.
+sinks.append(OSLogSink(subsystem: "com.example.app"))
+#endif
+sinks.append(CollapsingSink(FileSink(directory: logDirectory, name: "app.log")))
+Log.bootstrap(sinks: sinks)
 
 Log.sync.notice("root \(hash, .public) refused for \(name, .userText)")
 ```

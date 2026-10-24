@@ -286,17 +286,18 @@ func flushSurvivesAStorm() async throws {
 func writeFailuresAreReported() async throws {
     let directory = try temporaryDirectory()
     defer { try? FileManager.default.removeItem(at: directory) }
-    let manager = FileManager.default
     let sink = FileSink(directory: directory, name: "test.log", minimum: .debug)
 
-    // A directory nothing may be created in: the file cannot be opened, and
-    // the line has nowhere to go.
-    try manager.setAttributes([.posixPermissions: 0o500], ofItemAtPath: directory.path)
+    // Make opening the log fail so the line has nowhere to go.
+    try allowWrites(false, in: directory, name: "test.log")
     sink.write(LogEntry(level: .info, category: .sync, message: "lost", date: Date()))
     await sink.flush()
-    #expect(!manager.fileExists(atPath: directory.appending(path: "test.log").path))
+    #if !os(Windows)
+    // The Windows failure fixture itself occupies this path.
+    #expect(!FileManager.default.fileExists(atPath: directory.appending(path: "test.log").path))
+    #endif
 
-    try manager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: directory.path)
+    try allowWrites(true, in: directory, name: "test.log")
     sink.write(LogEntry(level: .info, category: .sync, message: "kept", date: Date()))
     await sink.flush()
 
@@ -314,13 +315,12 @@ func writeFailuresAreReported() async throws {
 func markersTakeTheFormat() async throws {
     let directory = try temporaryDirectory()
     defer { try? FileManager.default.removeItem(at: directory) }
-    let manager = FileManager.default
     let sink = FileSink(directory: directory, name: "test.jsonl", format: JSONLinesFormat(), minimum: .debug)
 
-    try manager.setAttributes([.posixPermissions: 0o500], ofItemAtPath: directory.path)
+    try allowWrites(false, in: directory, name: "test.jsonl")
     sink.write(LogEntry(level: .info, category: .sync, message: "lost", date: Date()))
     await sink.flush()
-    try manager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: directory.path)
+    try allowWrites(true, in: directory, name: "test.jsonl")
     sink.write(LogEntry(level: .info, category: .sync, message: "kept", date: Date()))
     await sink.flush()
 

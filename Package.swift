@@ -7,8 +7,8 @@
 // tagged messages whose secrets meet a masker exactly once, and sinks for the
 // system log, a rotating file and a terminal.
 //
-// It depends on nothing, and that is the whole of its design. Nothing here names
-// a product: not the categories a process is divided into, not the subsystem the
+// Nothing here names a product: not the categories a process is divided into,
+// not the subsystem the
 // system log answers to, not the file a sink writes. Each of those is the host's,
 // named from a composition root, and not called at all is a supported state —
 // then nothing is written, because a library that logs somewhere nobody asked
@@ -21,9 +21,13 @@ let package = Package(
     products: [
         .library(name: "RedactLog", targets: ["RedactLog"]),
     ],
+    dependencies: [
+        .package(url: "https://github.com/apple/swift-crypto.git", from: "3.0.0"),
+    ],
     targets: [
         .target(
             name: "RedactLog",
+            dependencies: [.product(name: "Crypto", package: "swift-crypto")],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .testTarget(

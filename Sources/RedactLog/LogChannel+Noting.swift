@@ -74,6 +74,14 @@ extension LogChannel {
     /// the way a literal is, and what it chose to carry in an associated
     /// value is the host's to tag.
     static func summary(of error: any Error) -> String {
+        #if !canImport(ObjectiveC)
+        // Foundation's value errors do not bridge to NSError in this type check
+        // off Apple platforms, so recognize them before their user info can print.
+        if error is CocoaError || error is URLError || error is POSIXError {
+            let failure = error as NSError
+            return "\(failure.domain) \(failure.code)"
+        }
+        #endif
         if type(of: error) is NSError.Type {
             let failure = error as NSError
             return "\(failure.domain) \(failure.code)"

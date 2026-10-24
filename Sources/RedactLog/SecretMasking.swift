@@ -2,7 +2,11 @@
 // Use of this source code is governed by an MIT-style license that can be
 // found in the LICENSE file.
 
+#if canImport(CryptoKit)
 import CryptoKit
+#else
+import Crypto
+#endif
 import Foundation
 
 /// What turns a secret into something a log may hold.
@@ -71,7 +75,13 @@ public struct DigestMasker: SecretMasking {
     /// Drawn once per process. Static rather than stored, so that every
     /// `DigestMasker()` in the process — the installed one and the one behind
     /// `Log.masked` — agrees about what a secret looks like.
-    private static let key = SymmetricKey(size: .bits256)
+    ///
+    /// `nonisolated(unsafe)` because swift-crypto's `SymmetricKey` carries no
+    /// `Sendable` conformance (CryptoKit's does, which is why Apple never needed
+    /// this): the value is immutable and `HMAC` only reads it, so sharing it is
+    /// safe — the compiler is told so here, once, rather than the whole module
+    /// being loosened.
+    nonisolated(unsafe) private static let key = SymmetricKey(size: .bits256)
 }
 
 private extension UInt8 {

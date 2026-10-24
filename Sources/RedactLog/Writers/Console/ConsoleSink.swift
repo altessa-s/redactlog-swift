@@ -34,11 +34,17 @@ public struct ConsoleSink: LogSink {
     }
 
     public func write(_ entry: LogEntry) {
+        #if canImport(Darwin)
         // `fputs` rather than `FileHandle.write`: one call instead of a `Data`
         // per line, and it reports a closed pipe by returning rather than by
         // raising an Objective-C exception, which Swift cannot catch. A log
         // that kills the process when its reader goes away would be worse than
         // no log.
         fputs(format.format(entry) + "\n", stderr)
+        #else
+        // Non-Apple C runtimes expose stderr as shared mutable state, which
+        // Swift 6 rejects here; Foundation provides a concurrency-safe handle.
+        try? FileHandle.standardError.write(contentsOf: Data((format.format(entry) + "\n").utf8))
+        #endif
     }
 }
